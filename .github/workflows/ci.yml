@@ -259,6 +259,13 @@ jobs:
         run: |
           expected="sha-${GITHUB_SHA}"
           for route in health ready; do
-            body=$(curl --fail --silent --show-error --retry 4 --retry-delay 2 "https://heimdall.reidjoss.workers.dev/api/${route}")
-            jq -e --arg version "$expected" --arg status "$(test "$route" = health && echo healthy || echo ready)" '.version == $version and .status == $status' <<< "$body" >/dev/null
+            for attempt in {1..30}; do
+              if body=$(curl --fail --silent --show-error --max-time 8 "https://heimdall.reidjoss.workers.dev/api/${route}") &&
+                jq -e --arg version "$expected" --arg status "$(test "$route" = health && echo healthy || echo ready)" '.version == $version and .status == $status' <<< "$body" >/dev/null; then
+                continue 2
+              fi
+              sleep 3
+            done
+            echo "::error::${route} did not report ${expected} after 30 attempts"
+            exit 1
           done
