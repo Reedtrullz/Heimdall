@@ -23,17 +23,13 @@ against `sha-<full commit>`. Its token is the repository secret
 `HEIMDALL_CLOUDFLARE_API_TOKEN`; the account ID is a repository variable.
 `COINAPI_KEY` is a Worker secret. Keep secret values out of builds and reports.
 
-Before cutover, verify the exact master Worker on its workers.dev URL, CPU,
-application flows, and rollback image. Attach `bond.thorchain.no` as a Worker
-custom domain, confirm public DNS and live Worker version/readiness, then mark
-`/etc/heimdall/cloudflare-primary` on the VPS. The Ansible playbook refuses a
-normal VPS deployment after this marker exists. To restore the preserved VPS
-image intentionally, set `HEIMDALL_VPS_ROLLBACK=1` when running the playbook and
-restore the saved Caddy/DNS configuration.
-
-Retire only the old `heimdall` container, its port 3001 Caddy vhost, and its
-obsolete production image after live verification. Preserve `/opt/apps/heimdall/data`,
-backups, the prior tagged image for rollback, and unrelated services.
+`bond.thorchain.no` is now a Worker custom domain; Cloudflare manages its
+proxied `AAAA 100::` DNS record. The former VPS A record, Caddy block, container,
+and local image were retired after the live flow and CPU checks. The immutable
+rollback image `ghcr.io/reedtrullz/heimdall:sha-19d0a3f` remains in GHCR;
+`deploy` on the VPS can read its manifest. `/opt/apps/heimdall/data` and
+`/backups/Caddyfile.pre-heimdall-cloudflare-20260929` remain on the VPS.
+`/etc/heimdall/cloudflare-primary` makes Ansible refuse accidental VPS deploys.
 
 ## Architecture
 
@@ -67,7 +63,7 @@ don't `git pull` or build images on it.
 
 ```bash
 cd /Users/reidar/Projectos/Heimdall
-IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
+HEIMDALL_VPS_ROLLBACK=1 IMAGE_TAG=sha-19d0a3f ansible-playbook \
   -i inventory/hosts.yml ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
@@ -136,7 +132,6 @@ curl -s https://bond.thorchain.no/api/health | jq
 curl -s https://bond.thorchain.no/api/ready | jq
 
 # Cloudflare primary version should match the exact master SHA in CI.
-ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
 curl -s https://bond.thorchain.no/api/health | jq -r .version
 curl -s https://bond.thorchain.no/api/ready | jq -r .version
 
@@ -149,15 +144,14 @@ curl -s -o /dev/null -w "%{http_code}\n" https://bond.thorchain.no
 Automatic: the playbook captures the previous image ID/digest/reference before
 swapping and restores it if the readiness check fails.
 
-Manual:
-```bash
-ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16
-docker stop heimdall && docker rm heimdall
-docker run -d --name heimdall --restart unless-stopped \
-  -p 127.0.0.1:3001:3000 \
-  -e NODE_ENV=production -e PORT=3000 -e HOSTNAME=0.0.0.0 \
-  ghcr.io/reedtrullz/heimdall:sha-<previous-short-sha>
-```
+For a deliberate Cloudflare-to-VPS rollback, run the Ansible command above
+with the rollback flag and old immutable tag. Confirm local port 3001 readiness,
+restore only the `bond.thorchain.no` block from the saved Caddyfile, validate
+and reload Caddy, then detach the Worker custom domain and recreate the proxied
+VPS A record (`198.23.137.16`). Check public DNS and the live old version before
+clearing the Cloudflare-primary marker. Keep the Worker and its secret for a
+forward recovery. Do not restore the entire saved Caddyfile over newer unrelated
+vhosts.
 
 ## Inebotten (Discord bot, sibling project)
 
