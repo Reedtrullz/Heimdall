@@ -38,19 +38,17 @@ backups, the prior tagged image for rollback, and unrelated services.
 ## Architecture
 
 ```
-Local push → GitHub → CI workflow (test, build, e2e, publish)
+Local push → GitHub → CI (test, Next.js/vinext build, E2E)
                               ↓
-                   GHCR: ghcr.io/reedtrullz/heimdall:sha-<short>
+                   heimdall Cloudflare Worker (sha-<full>)
                               ↓
-                   ansible-playbook from local machine
-                              ↓
-                   VPS pulls image → swaps container → /api/ready gate
-                              ↓
-                   Caddy proxy (https://bond.thorchain.no)
+                   bond.thorchain.no custom domain
+
+Rollback path: GHCR image → Ansible → VPS container → Caddy
 ```
 
-The VPS is a *target*, never a *source*. Don't `git pull` on it; don't build
-images on it. CI builds, GHCR stores, Ansible deploys.
+CI builds the Worker and the rollback image. The VPS is only a rollback target;
+don't `git pull` or build images on it.
 
 ## Prerequisites
 
@@ -65,7 +63,7 @@ images on it. CI builds, GHCR stores, Ansible deploys.
 - GHCR pull credentials (read:packages PAT) — `docker login ghcr.io` already done
 - UFW + fail2ban (already configured)
 
-## Deploy
+## VPS rollback deployment
 
 ```bash
 cd /Users/reidar/Projectos/Heimdall
@@ -128,7 +126,7 @@ IMAGE_SHA=490cac0 scripts/compose-production.sh up -d
 ## Verify
 
 ```bash
-# Container status
+# Rollback container status, if restored
 ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Status}} {{.Image}}'"
 
 # Liveness endpoint
@@ -137,7 +135,7 @@ curl -s https://bond.thorchain.no/api/health | jq
 # Readiness endpoint used by promotion/rollback gates
 curl -s https://bond.thorchain.no/api/ready | jq
 
-# Exact deployed image/version check; image tag and health/ready versions should match.
+# Cloudflare primary version should match the exact master SHA in CI.
 ssh -i ~/.ssh/id_rsa_racknerd -o IdentitiesOnly=yes deploy@198.23.137.16 "docker ps --filter name=heimdall --format '{{.Image}}'"
 curl -s https://bond.thorchain.no/api/health | jq -r .version
 curl -s https://bond.thorchain.no/api/ready | jq -r .version
@@ -206,9 +204,8 @@ ansible -i inventory/hosts.yml vps -m ping
 ```
 
 **CI fails on Docker step but local build works:**
-- Ensure new dependencies' linux-x64 prebuilts are added with exact versions to
-  `.github/actions/install-deps/action.yml` and both native install lines in
-  `Dockerfile`.
+- Ensure the required linux-x64 optional prebuilds are present in
+  `package-lock.json` and installed by `npm ci --include=optional`.
 - Don't switch to Alpine. See `CLAUDE.md` "Don't" section.
 
 **Deploy reports "ok" but the live site still runs old code:**

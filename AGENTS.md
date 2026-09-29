@@ -56,8 +56,8 @@ npm run build      # mirrors CI's "build" job
 
 ## Adding a dependency
 1. `npm install <pkg>` (commits to `package-lock.json`).
-2. If it ships native binaries, add the linux/x64 platform package to the
-   `npm install --no-save` line in `Dockerfile` so CI image builds don't fail.
+2. If it ships native binaries, confirm the Linux/x64 optional package is in
+   `package-lock.json` and installed by Linux `npm ci --include=optional`.
 
 ## App Router specifics
 - Client components that use `useSearchParams`/`usePathname` must be wrapped
@@ -67,7 +67,13 @@ npm run build      # mirrors CI's "build" job
   responses are user-specific.
 
 ## Deployment
-Don't deploy from the VPS. Run from your machine:
+Passing `master` CI deploys the Cloudflare Worker when
+`HEIMDALL_CLOUDFLARE_DEPLOY_ENABLED=1`. Verify its exact full SHA against
+`/api/health` and `/api/ready` on the intended live domain. Check Worker CPU
+and real browser flows before calling a cutover complete.
+
+The Ansible path is reserved for an intentional VPS rollback. Don't deploy
+from the VPS. Run from your machine:
 ```bash
 ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
