@@ -75,7 +75,7 @@ and real browser flows before calling a cutover complete.
 The Ansible path is reserved for an intentional VPS rollback. Don't deploy
 from the VPS. Run from your machine:
 ```bash
-ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
+HEIMDALL_VPS_ROLLBACK=1 IMAGE_TAG=sha-19d0a3f ansible-playbook -i inventory/hosts.yml ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
 The CI publishes the image; Ansible just pulls and swaps containers.

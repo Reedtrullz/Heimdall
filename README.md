@@ -177,7 +177,7 @@ brew install ansible
 
 # 2. Run deployment playbook
 cd /Users/reidar/Projectos/Heimdall
-IMAGE_TAG=sha-<exact-short-sha> ansible-playbook \
+HEIMDALL_VPS_ROLLBACK=1 IMAGE_TAG=sha-19d0a3f ansible-playbook \
   -i inventory/hosts.yml ansible-playbook.yml \
   --vault-password-file ~/.vault_pass.txt
 ```
