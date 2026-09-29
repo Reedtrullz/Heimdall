@@ -22,7 +22,7 @@ runs:
       run: |
         # If you add a new native dep that ships its prebuilts as optionalDeps,
         # add the pinned linux-x64 package name here AND in Dockerfile.
-        npm install --no-save --no-package-lock \
+        npm install --no-save --no-package-lock --legacy-peer-deps \
           lightningcss-linux-x64-gnu@1.32.0 \
           @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
           @rolldown/binding-linux-x64-gnu@1.2.11 \
