@@ -32,10 +32,6 @@ export function __getRateLimitStoreSizeForTests(): number {
   return rateLimitStore.size;
 }
 
-// Clean up expired entries every 10 minutes
-const cleanupTimer = setInterval(() => cleanupExpiredEntries(), 10 * 60 * 1000);
-cleanupTimer.unref?.();
-
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;

@@ -57,3 +57,6 @@ yarn-error.log*
 
 # Sibling project (separate repo at github.com/Reedtrullz/inebotten-discord)
 inebotten-discord/
+/dist/
+.vinext/
+.cloudflare/

@@ -155,6 +155,9 @@ Before changing API clients, live-data charts, RUNE/APY math, or LP valuation co
 
 Heimdall uses a **push-based deployment model** from your local machine to the VPS via Ansible.
 
+The Cloudflare Free migration path, preview gates, CI flag, and VPS rollback
+procedure are in [DEPLOYMENT.md](DEPLOYMENT.md#cloudflare-free-migration).
+
 ### Architecture
 ```
 Developer Push → GitHub → CI workflow (test, build, e2e, publish)

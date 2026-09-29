@@ -1,5 +1,40 @@
 # Heimdall Deployment Guide
 
+## Cloudflare Free migration
+
+`cloudflare.config.ts` builds a vinext Worker. Its public fetch handler forwards
+dynamic requests to the `HeimdallDO` SQLite Durable Object so rendering uses the
+Durable Object CPU allowance. The current VPS notification service has no VAPID
+keys or subscriptions; background push remains unavailable on Cloudflare.
+Open-tab alerts and preferences stay in the browser. Do not enable VAPID keys
+without replacing the filesystem notification store and process timer with
+durable storage and a scheduled runner.
+
+Preview: `HEIMDALL_RELEASE_VERSION=preview-<sha> npm run deploy:vinext -- --preview`.
+Check the real UI, `/api/health`, `/api/ready`, `/api/notifications/status`,
+CoinAPI parity, and Cloudflare request CPU grouped by `executionModel`. The
+stateless fetch handler must stay below the Workers Free 10 ms CPU limit; the
+Durable Object has its own allowance. A 200 response alone is insufficient.
+
+The single GitHub CI workflow builds both Next.js and vinext on PRs. After
+`HEIMDALL_CLOUDFLARE_DEPLOY_ENABLED=1` is set for the repository, a passing
+master push deploys the `heimdall` Worker and verifies both health versions
+against `sha-<full commit>`. Its token is the repository secret
+`HEIMDALL_CLOUDFLARE_API_TOKEN`; the account ID is a repository variable.
+`COINAPI_KEY` is a Worker secret. Keep secret values out of builds and reports.
+
+Before cutover, verify the exact master Worker on its workers.dev URL, CPU,
+application flows, and rollback image. Attach `bond.thorchain.no` as a Worker
+custom domain, confirm public DNS and live Worker version/readiness, then mark
+`/etc/heimdall/cloudflare-primary` on the VPS. The Ansible playbook refuses a
+normal VPS deployment after this marker exists. To restore the preserved VPS
+image intentionally, set `HEIMDALL_VPS_ROLLBACK=1` when running the playbook and
+restore the saved Caddy/DNS configuration.
+
+Retire only the old `heimdall` container, its port 3001 Caddy vhost, and its
+obsolete production image after live verification. Preserve `/opt/apps/heimdall/data`,
+backups, the prior tagged image for rollback, and unrelated services.
+
 ## Architecture
 
 ```

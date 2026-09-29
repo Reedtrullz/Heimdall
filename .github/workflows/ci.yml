@@ -89,6 +89,22 @@ jobs:
           path: .next/
           if-no-files-found: ignore
 
+  cloudflare-build:
+    name: Cloudflare build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - uses: ./.github/actions/install-deps
+      - run: npm run build:vinext
+        env:
+          CI: true
+          HEIMDALL_RELEASE_VERSION: sha-${{ github.sha }}
+
   e2e:
     name: Playwright E2E
     runs-on: ubuntu-latest
@@ -219,3 +235,30 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Pull with: \`docker pull ${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_VERSION }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-cloudflare:
+    name: Deploy Cloudflare Worker
+    needs: [test, build, e2e, cloudflare-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.HEIMDALL_CLOUDFLARE_DEPLOY_ENABLED == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - uses: ./.github/actions/install-deps
+      - name: Deploy exact source version
+        run: npm run deploy:vinext
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.HEIMDALL_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.HEIMDALL_CLOUDFLARE_ACCOUNT_ID }}
+          HEIMDALL_RELEASE_VERSION: sha-${{ github.sha }}
+      - name: Verify Worker version and readiness
+        run: |
+          expected="sha-${GITHUB_SHA}"
+          for route in health ready; do
+            body=$(curl --fail --silent --show-error --retry 4 --retry-delay 2 "https://heimdall.reidjoss.workers.dev/api/${route}")
+            jq -e --arg version "$expected" --arg status "$(test "$route" = health && echo healthy || echo ready)" '.version == $version and .status == $status' <<< "$body" >/dev/null
+          done
