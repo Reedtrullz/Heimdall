@@ -1,14 +1,5 @@
-name: 'Install npm deps (with linux native binaries)'
-description: |
-  Run `npm ci` and then explicitly install the linux-x64 prebuilt binaries
-  that some native deps (Tailwind v4, lightningcss, rolldown / vitest 4,
-  unrs-resolver) ship as optionalDependencies. The lockfile was generated on
-  macOS-arm64 and therefore only records the darwin-arm64 prebuilts; npm ci
-  silently skips the missing linux variants, which then crash at import time.
-
-  Centralising this in one composite action means new native deps only need
-  to be added in a single workflow helper plus the Dockerfile, not in every
-  CI job.
+name: 'Install npm deps'
+description: Install locked dependencies, including platform optional binaries.
 
 runs:
   using: composite
@@ -16,16 +7,3 @@ runs:
     - name: npm ci
       shell: bash
       run: npm ci --include=optional
-
-    - name: Install linux/x64 native deps
-      shell: bash
-      run: |
-        # If you add a new native dep that ships its prebuilts as optionalDeps,
-        # add the pinned linux-x64 package name here AND in Dockerfile.
-        npm install --no-save --no-package-lock --legacy-peer-deps \
-          lightningcss-linux-x64-gnu@1.32.0 \
-          @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
-          @rolldown/binding-linux-x64-gnu@1.2.11 \
-          @unrs/resolver-binding-linux-x64-gnu@1.12.2 \
-          @img/sharp-linux-x64@0.35.4 \
-          @img/sharp-libvips-linux-x64@1.3.3
