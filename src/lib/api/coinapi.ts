@@ -1,4 +1,3 @@
-const COINAPI_KEY = process.env.COINAPI_KEY;
 const COINAPI_BASE = 'https://rest.coinapi.io/v1';
 
 export interface CoinApiExchangeRate {
@@ -18,6 +17,7 @@ export interface CoinApiTimeSeries {
 }
 
 async function coinApiFetch<T>(path: string): Promise<T> {
+  const COINAPI_KEY = process.env.COINAPI_KEY;
   if (!COINAPI_KEY) {
     throw new Error('CoinAPI key is not configured');
   }

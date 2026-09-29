@@ -4,12 +4,12 @@ A professional investment command center for THORChain bond providers and liquid
 
 > **Canonical project:** This repository (`Reedtrullz/Heimdall`, local path `/Users/reidar/Projectos/Heimdall`) is the canonical THORChain dashboard. Do not revive or implement new work in the older `THORNode Watcher` / BondTrack checkout; keep it archive-only for historical QA/audit artifacts.
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.7-black)
+![Next.js](https://img.shields.io/badge/Next.js-16.3.6-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4.0-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![CI](https://github.com/Reedtrullz/Heimdall/actions/workflows/ci.yml/badge.svg)
-![Deployment](https://img.shields.io/badge/Deployment-Ansible-blue)
+![Deployment](https://img.shields.io/badge/Deployment-Cloudflare-blue)
 ![Health](https://img.shields.io/badge/Health-✅-green)
 
 ## Features
@@ -58,14 +58,14 @@ A professional investment command center for THORChain bond providers and liquid
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.2.7 (App Router, Turbopack)
+- **Framework**: Next.js 16.3.6 (App Router, Turbopack); vinext on Cloudflare Workers
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
 - **Data Fetching**: SWR
 - **Charts**: Recharts (with ResponsiveContainer fixes for clean rendering)
 - **Testing**: Vitest source tests + Playwright E2E specs across desktop and focused mobile-critical projects
 - **Icons**: lucide-react
-- **Deployment**: Ansible → VPS (GHCR, Docker, Caddy reverse proxy)
+- **Deployment**: Cloudflare Worker via GitHub Actions; Ansible/VPS rollback
 - **Security**: Ansible Vault for sensitive variables
 
 ## Getting Started
@@ -153,24 +153,24 @@ Before changing API clients, live-data charts, RUNE/APY math, or LP valuation co
 
 ## Deployment
 
-Heimdall uses a **push-based deployment model** from your local machine to the VPS via Ansible.
+Heimdall deploys to Cloudflare Workers from the passing `master` CI workflow.
+The VPS image and Ansible playbook are reserved for rollback.
+
+The Cloudflare Free migration path, preview gates, CI flag, and VPS rollback
+procedure are in [DEPLOYMENT.md](DEPLOYMENT.md#cloudflare-free-migration).
 
 ### Architecture
 ```
-Developer Push → GitHub → CI workflow (test, build, e2e, publish)
-                       ↓ (publish job runs after the others pass)
-                  GHCR (ghcr.io/reedtrullz/heimdall:sha-<short>)
+Developer Push → GitHub → CI (tests, builds, E2E)
                        ↓
-                  Local Machine (ansible-playbook) 
+                  Cloudflare Worker (heimdall)
                        ↓
-                  VPS (198.23.137.16) 
-                       ↓
-                  Docker Container (port 3001) 
-                       ↓
-                  Caddy Reverse Proxy (bond.thorchain.no)
+                  bond.thorchain.no
+
+Rollback: GHCR image → Ansible → VPS container → Caddy
 ```
 
-### Quick Deploy
+### VPS Rollback Deploy
 ```bash
 # 1. Ensure Ansible is installed (via Homebrew)
 brew install ansible
@@ -198,12 +198,11 @@ IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh config
 IMAGE_SHA=<exact-short-sha> scripts/compose-production.sh up -d
 ```
 
-### Features
-- **Liveness Check**: Docker/Compose healthchecks use `/api/health` for local process liveness
-- **Readiness Gate**: Promotion and rollback wait on `/api/ready` so THORNode and Midgard are reachable through runtime config
-- **Durable Notifications**: Background browser push subscriptions persist in the mounted `/data` directory
-- **Rollback**: Automatically reverts to the previous image ID/digest/reference on readiness check failure
-- **Vault**: Sensitive vars (e.g. CoinAPI key) stored in `group_vars/vps/vault.yml` (encrypted)
+### Release checks
+- **Liveness and readiness**: CI checks `/api/health` and `/api/ready` for the exact source SHA.
+- **CPU**: Check Worker and Durable Object CPU in Cloudflare Observability after deployment.
+- **Rollback**: The preserved GHCR image, Ansible playbook, and VPS data support an intentional rollback.
+- **Notifications**: Open-tab alerts remain available. Background push is unconfigured and needs durable Cloudflare storage before enabling it.
 See [DEPLOYMENT.md](DEPLOYMENT.md) for full details. The Inebotten
 Discord bot is a separate project — see
 [Reedtrullz/inebotten-discord](https://github.com/Reedtrullz/inebotten-discord)
@@ -287,6 +286,8 @@ The `master` branch uses a single GitHub Actions workflow at
 - **test** — Vitest unit tests + coverage
 - **build** — Next.js production build
 - **e2e** — Playwright E2E tests
+- **cloudflare-build** — vinext Worker build
+- **deploy-cloudflare** — deploys the exact master SHA and verifies health/readiness when the repository flag is enabled
 - **docker-build** — non-pushing Docker build verification for PR, staging, and other non-`master` refs
 - **publish** — runs only on `push` to `master`, after the three above pass.
   Builds the canonical `Dockerfile` with Buildx and publishes the GHCR
@@ -299,10 +300,9 @@ majors (`actions/checkout@v6`, `actions/setup-node@v6`,
 `docker/metadata-action@v6`) so CI does not regress to Node.js 20 deprecation
 warnings.
 
-Deploy verification should compare the exact immutable SHA tag in GHCR,
-Ansible's selected `IMAGE_TAG`, `docker ps --format '{{.Image}}'`, and the
-`version` returned by both `/api/health` and `/api/ready`. Do not treat this
-documentation as a production deployment claim.
+Deploy verification compares the master SHA with the `version` returned by
+both live `/api/health` and `/api/ready`. For a VPS rollback, compare the
+GHCR tag, Ansible's selected tag, the container image, and both versions.
 
 There is no separate publish workflow and no cross-workflow `workflow_run`
 trigger. See `CLAUDE.md` and `AGENTS.md` for the rationale.

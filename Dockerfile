@@ -27,17 +27,6 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Install linux-x64 native prebuilts — the lockfile was generated on macOS-arm64
-# so only darwin-arm64 variants are recorded. npm ci silently skips missing
-# optional deps for other platforms, which then crash at import time.
-RUN npm install --no-save --no-package-lock \
-  lightningcss-linux-x64-gnu@1.32.0 \
-  @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
-  @rolldown/binding-linux-x64-gnu@1.0.3 \
-  @unrs/resolver-binding-linux-x64-gnu@1.12.2 \
-  @img/sharp-linux-x64@0.35.3 \
-  @img/sharp-libvips-linux-x64@1.3.2
-
 COPY . .
 RUN npm run build
 
@@ -58,11 +47,11 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-RUN npm install --no-save --no-package-lock \
+RUN npm install --no-save --no-package-lock --legacy-peer-deps \
   lightningcss-linux-x64-gnu@1.32.0 \
   @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
-  @img/sharp-linux-x64@0.35.3 \
-  @img/sharp-libvips-linux-x64@1.3.2
+  @img/sharp-linux-x64@0.35.4 \
+  @img/sharp-libvips-linux-x64@1.3.3
 
 USER node
 EXPOSE 3000

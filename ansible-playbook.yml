@@ -8,6 +8,17 @@
     image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('sha-' ~ git_sha, true) }}"
 
   pre_tasks:
+    - name: Check Cloudflare primary marker
+      ansible.builtin.stat:
+        path: /etc/heimdall/cloudflare-primary
+      register: cloudflare_primary_marker
+
+    - name: Require explicit VPS rollback after Cloudflare cutover
+      ansible.builtin.assert:
+        that:
+          - not cloudflare_primary_marker.stat.exists or lookup('env', 'HEIMDALL_VPS_ROLLBACK') == '1'
+        fail_msg: "Cloudflare is primary. Set HEIMDALL_VPS_ROLLBACK=1 for an intentional VPS rollback."
+
     - name: Validate immutable image tag
       assert:
         that:
