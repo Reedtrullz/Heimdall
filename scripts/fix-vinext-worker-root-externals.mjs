@@ -50,12 +50,55 @@ function posixRel(fromAbs, toAbs) {
   return rel;
 }
 
+/**
+ * Linear scan for quoted relative .js/.mjs paths. Avoids nested-quantifier
+ * regexes that CodeQL flags as ReDoS (js/redos).
+ */
 function* relativeSpecifiers(code) {
-  // Simpler, robust scan: quoted ./ or ../ paths ending in .js/.mjs
-  const re = /(["'])(\.\.?(?:\/[^"'\\]+)+\.m?js)\1/g;
-  let m;
-  while ((m = re.exec(code)) !== null) {
-    yield { quote: m[1], spec: m[2], index: m.index, length: m[0].length };
+  const n = code.length;
+  let i = 0;
+  while (i < n) {
+    const c = code[i];
+    if (c !== '"' && c !== "'") {
+      i += 1;
+      continue;
+    }
+    const quote = c;
+    const start = i;
+    i += 1;
+    if (i >= n || code[i] !== ".") {
+      while (i < n && code[i] !== quote) {
+        if (code[i] === "\\") i += 2;
+        else i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    let j = i + 1; // past first '.'
+    if (j < n && code[j] === ".") j += 1;
+    if (j >= n || code[j] !== "/") {
+      i = start + 1;
+      continue;
+    }
+    while (j < n && code[j] !== quote) {
+      if (code[j] === "\\") {
+        j += 2;
+        continue;
+      }
+      j += 1;
+    }
+    if (j >= n || code[j] !== quote) {
+      i = start + 1;
+      continue;
+    }
+    const spec = code.slice(i, j);
+    if (
+      (spec.startsWith("./") || spec.startsWith("../")) &&
+      (spec.endsWith(".js") || spec.endsWith(".mjs"))
+    ) {
+      yield { quote, spec, index: start, length: j - start + 1 };
+    }
+    i = j + 1;
   }
 }
 
@@ -66,7 +109,7 @@ function rewriteFile(filePath, rootNames) {
     .split(path.sep)
     .join("/");
   // Root-level files already use ./ correctly for sibling root assets.
-  if (!relToBundle.includes("/")) return { changed: false, code: original };
+  if (!relToBundle.includes("/")) return { changed: false };
 
   const replacements = [];
 
@@ -83,12 +126,17 @@ function rewriteFile(filePath, rootNames) {
     const correct = posixRel(filePath, rootFile);
     if (correct === spec) continue;
 
-    replacements.push({ index, length, next: `${quote}${correct}${quote}`, from: spec, to: correct });
+    replacements.push({
+      index,
+      length,
+      next: `${quote}${correct}${quote}`,
+      from: spec,
+      to: correct,
+    });
   }
 
   if (!replacements.length) return { changed: false };
 
-  // Apply from end so indices stay valid.
   replacements.sort((a, b) => b.index - a.index);
   let out = original;
   for (const r of replacements) {
@@ -133,7 +181,9 @@ function main() {
 
   const rootNames = rootJsBasenames(BUNDLE_ROOT);
   if (!rootNames.size) {
-    console.log("fix-vinext-worker-root-externals: no root .js assets; nothing to do");
+    console.log(
+      "fix-vinext-worker-root-externals: no root .js assets; nothing to do",
+    );
     return;
   }
 
