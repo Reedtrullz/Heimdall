@@ -29,20 +29,19 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       - uses: ./.github/actions/install-deps
-      - run: npm run check:native-prebuild-pins
+      - run: pnpm run check:native-prebuild-pins
       # Moderate+ production vulnerabilities should fail CI; omit dev deps to avoid tool noise.
-      - run: npm run audit:prod
+      - run: pnpm run audit:prod
       # High+ vulnerabilities anywhere in the tree should fail CI, including dev-tool advisories.
-      - run: npm run audit:high
-      - run: npm run lint -- --max-warnings=0
-      - run: npm run typecheck
-      - run: npm test
+      - run: pnpm run audit:high
+      - run: pnpm run lint --max-warnings=0
+      - run: pnpm run typecheck
+      - run: pnpm test
         env:
           CI: true
         timeout-minutes: 5
-      - run: npm run test:coverage
+      - run: pnpm run test:coverage
         env:
           CI: true
       - uses: actions/upload-artifact@v7
@@ -67,11 +66,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       - uses: ./.github/actions/install-deps
       # Prevent production builds from silently using mock data in a deployed
       # environment. The value is inlined at client build time; this guard
-      # fails the workflow before npm run build when the env is set.
+      # fails the workflow before pnpm run build when the env is set.
       - name: Assert production builds never use mock data
         run: |
           if [ "${NEXT_PUBLIC_USE_MOCK_DATA:-}" = "true" ]; then
@@ -79,7 +77,7 @@ jobs:
             exit 1
           fi
           echo "Mock data guard passed"
-      - run: npm run build
+      - run: pnpm run build
         env:
           CI: true
       - uses: actions/upload-artifact@v7
@@ -98,9 +96,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       - uses: ./.github/actions/install-deps
-      - run: npm run build:vinext
+      - run: pnpm run build:vinext
         env:
           CI: true
           HEIMDALL_RELEASE_VERSION: sha-${{ github.sha }}
@@ -114,10 +111,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       - uses: ./.github/actions/install-deps
-      - run: npx playwright install --with-deps
-      - run: npm run e2e
+      - run: pnpm exec playwright install --with-deps
+      - run: pnpm run e2e
         env:
           CI: true
       - uses: actions/upload-artifact@v7
@@ -247,10 +243,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
       - uses: ./.github/actions/install-deps
       - name: Deploy exact source version
-        run: npm run deploy:vinext
+        run: pnpm run deploy:vinext
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.HEIMDALL_CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.HEIMDALL_CLOUDFLARE_ACCOUNT_ID }}

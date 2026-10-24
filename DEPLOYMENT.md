@@ -10,7 +10,7 @@ Open-tab alerts and preferences stay in the browser. Do not enable VAPID keys
 without replacing the filesystem notification store and process timer with
 durable storage and a scheduled runner.
 
-Preview: `HEIMDALL_RELEASE_VERSION=preview-<sha> npm run deploy:vinext -- --preview`.
+Preview: `HEIMDALL_RELEASE_VERSION=preview-<sha> pnpm run deploy:vinext -- --preview`.
 Check the real UI, `/api/health`, `/api/ready`, `/api/notifications/status`,
 CoinAPI parity, and Cloudflare request CPU grouped by `executionModel`. The
 stateless fetch handler must stay below the Workers Free 10 ms CPU limit; the
@@ -199,7 +199,7 @@ ansible -i inventory/hosts.yml vps -m ping
 
 **CI fails on Docker step but local build works:**
 - Ensure the required linux-x64 optional prebuilds are present in
-  `package-lock.json` and installed by `npm ci --include=optional`.
+  `pnpm-lock.yaml` and installed by `pnpm install --frozen-lockfile`.
 - Don't switch to Alpine. See `CLAUDE.md` "Don't" section.
 
 **Deploy reports "ok" but the live site still runs old code:**

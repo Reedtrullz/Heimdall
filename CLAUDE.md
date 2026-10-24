@@ -1,7 +1,7 @@
 # CLAUDE.md — Heimdall Project Context
 
-> **AI agent reading this:** before any non-trivial change, run `npm test` and
-> `npm run build` locally. CI is the source of truth — match it exactly.
+> **AI agent reading this:** before any non-trivial change, run `pnpm test` and
+> `pnpm run build` locally. CI is the source of truth — match it exactly.
 
 ## Project Overview
 Heimdall is a professional investment command center for THORChain bond
@@ -38,20 +38,20 @@ docs/archive/                 Historical audits, learnings (read-only)
 ## Development
 ```bash
 nvm use                       # picks up .nvmrc (Node 22)
-npm ci
-npm run dev                   # http://localhost:3000
-npm test                      # vitest run
-npm run e2e                   # playwright (needs dev server)
-npm run build                 # production build
+pnpm install --frozen-lockfile
+pnpm run dev                   # http://localhost:3000
+pnpm test                      # vitest run
+pnpm run e2e                   # playwright (needs dev server)
+pnpm run build                 # production build
 ```
 
 ## CI (single workflow: `.github/workflows/ci.yml`)
 Triggers on push/PR to `master` or `staging`.
 
 Jobs (run in parallel):
-1. **test** — `npm ci`, `npm run lint -- --max-warnings=0`, `npm test`, `npm run test:coverage`
-2. **build** — `npm run build` (verifies Next.js build outside Docker)
-3. **e2e** — `npm run e2e` with Playwright
+1. **test** — `pnpm install --frozen-lockfile`, `pnpm run lint -- --max-warnings=0`, `pnpm test`, `pnpm run test:coverage`
+2. **build** — `pnpm run build` (verifies Next.js build outside Docker)
+3. **e2e** — `pnpm run e2e` with Playwright
 
 Then **docker-build** runs a non-pushing `Dockerfile` build for PR, staging,
 and other non-`master` refs. **publish** runs only on `push` to `master`, after
@@ -72,7 +72,7 @@ trigger — that pattern caused two-named-workflow races in the past.
 
 ## Docker
 Single `Dockerfile`, two stages:
-1. `builder` — `npm ci` (npm includes optional dependencies by default), then exact-version installs of the
+1. `builder` — `pnpm install --frozen-lockfile` (npm includes optional dependencies by default), then exact-version installs of the
    linux/x64 native prebuilts Tailwind v4 / Turbopack / Vitest / Sharp need
    (`lightningcss-linux-x64-gnu@1.32.0`,
    `@tailwindcss/oxide-linux-x64-gnu@4.3.1`,

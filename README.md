@@ -75,28 +75,28 @@ A professional investment command center for THORChain bond providers and liquid
 nvm use
 
 # Install dependencies
-npm ci
+pnpm install --frozen-lockfile
 
 # Start development server
-npm run dev
+pnpm run dev
 
 # Run unit tests
-npm test
+pnpm test
 
 # Run production E2E tests; release verification should use CI=true to force a fresh server/build
-CI=true npm run e2e
+CI=true pnpm run e2e
 
 # Reuse an already-running local server only when explicitly requested
-npm run e2e:reuse
+pnpm run e2e:reuse
 
 # Run E2E tests with the default config (fresh production server unless PLAYWRIGHT_REUSE_SERVER=true)
-npm run e2e
+pnpm run e2e
 
 # Run E2E tests with UI
-npm run e2e:ui
+pnpm run e2e:ui
 
 # Build for production
-npm run build
+pnpm run build
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
@@ -137,7 +137,7 @@ them as `--build-arg` so browser JavaScript is baked deterministically. Runtime
 Ansible or Compose entries with the same names are for server-side rendering and
 diagnostics only; they do **not** rewrite an already-built client bundle.
 For a throwaway local mock-data build, set `NEXT_PUBLIC_USE_MOCK_DATA=true`
-before `npm run build` and use `thor1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5e949nr`
+before `pnpm run build` and use `thor1qypqxpq9qcrsszg2pvxq6rs0zqg3yyc5e949nr`
 as the demo provider address.
 Proxy trust variables only affect server-side best-effort rate-limit identity.
 Leave forwarding headers untrusted unless the deployment proxy overwrites or
@@ -258,10 +258,10 @@ We use Playwright for end-to-end testing. Tests are in the `e2e/` directory.
 
 ```bash
 # Run all E2E tests
-npm run e2e
+pnpm run e2e
 
 # Run with UI mode (debugging)
-npm run e2e:ui
+pnpm run e2e:ui
 
 # Run specific test file
 npx playwright test e2e/portfolio.spec.ts
@@ -324,7 +324,7 @@ After deployment, verify:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests: `npm test` and `npm run e2e`
+4. Run tests: `pnpm test` and `pnpm run e2e`
 5. Commit your changes (`git commit -m 'Add amazing feature'`)
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Submit a pull request

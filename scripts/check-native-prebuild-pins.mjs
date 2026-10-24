@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+const lockText = readFileSync('pnpm-lock.yaml', 'utf8');
 const nativePackages = [
   'lightningcss-linux-x64-gnu',
   '@tailwindcss/oxide-linux-x64-gnu',
@@ -12,14 +13,31 @@ const nativePackages = [
 
 const failures = [];
 
+function isLocked(packageName) {
+  const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(^|\\n)\\s*['"]?${escaped}@[^\\s'"]+['"]?:`, 'm');
+  return re.test(lockText);
+}
+
+function isInstalled(packageName) {
+  // npm-style hoist
+  if (existsSync(join('node_modules', packageName))) return true;
+  // pnpm virtual store: node_modules/.pnpm/@scope+name@version or name@version
+  const store = join('node_modules', '.pnpm');
+  if (!existsSync(store)) return false;
+  const encoded = packageName.startsWith('@')
+    ? packageName.replace('/', '+')
+    : packageName;
+  return readdirSync(store).some((entry) => entry.startsWith(`${encoded}@`));
+}
+
 for (const packageName of nativePackages) {
-  const lockedVersion = lock.packages?.[`node_modules/${packageName}`]?.version;
-  if (!lockedVersion) {
-    failures.push(`${packageName}: missing from package-lock.json`);
+  if (!isLocked(packageName)) {
+    failures.push(`${packageName}: missing from pnpm-lock.yaml`);
     continue;
   }
 
-  if (process.platform === 'linux' && process.arch === 'x64' && !existsSync(`node_modules/${packageName}`)) {
+  if (process.platform === 'linux' && process.arch === 'x64' && !isInstalled(packageName)) {
     failures.push(`${packageName}: missing from Linux installation`);
   }
 }

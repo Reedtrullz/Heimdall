@@ -2,21 +2,6 @@
   "name": "heimdall",
   "version": "1.0.0",
   "private": true,
-  "overrides": {
-    "postcss": "^8.5.23",
-    "brace-expansion": "^1.1.21",
-    "@typescript-eslint/typescript-estree": {
-      "brace-expansion": "^5.0.12"
-    },
-    "@scure/base": "2.2.0",
-    "js-yaml": "4.3.2",
-    "undici": "7.30.1",
-    "fflate": "0.7.5",
-    "browserslist": "4.29.2",
-    "baseline-browser-mapping": "2.11.26",
-    "sharp": "0.35.5",
-    "zod": "4.6.7"
-  },
   "engines": {
     "node": ">=22.12 <23"
   },
@@ -24,11 +9,11 @@
     "dev": "next dev",
     "build": "next build",
     "prepare:standalone": "rm -rf .next/standalone/public .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -R public .next/standalone/public && cp -R .next/static .next/standalone/.next/static",
-    "start": "npm run start:standalone",
-    "start:standalone": "npm run prepare:standalone && node .next/standalone/server.js",
+    "start": "pnpm run start:standalone",
+    "start:standalone": "pnpm run prepare:standalone && node .next/standalone/server.js",
     "check:native-prebuild-pins": "node scripts/check-native-prebuild-pins.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
-    "audit:high": "npm audit --audit-level=high",
+    "audit:prod": "pnpm audit --prod --audit-level=moderate",
+    "audit:high": "pnpm audit --audit-level=high",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -41,7 +26,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "dev:vinext": "vite dev --port 3001",
-    "build:vinext": "vite build",
+    "build:vinext": "VINEXT_BUILD=1 vite build",
     "start:vinext": "vite preview",
     "deploy:vinext": "vinext-cloudflare deploy"
   },
@@ -96,5 +81,6 @@
     "vite": "8.3.5",
     "vitest": "4.1.12"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@10.34.5"
 }
