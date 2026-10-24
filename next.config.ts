@@ -12,7 +12,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  // Clear for vinext/Cloudflare builds; keep standalone for Next/Docker.
+  output: process.env.VINEXT_BUILD === '1' ? undefined : 'standalone',
   // This app uses lucide-react SVG icons and no <Image>/<img> assets, so skip image optimization overhead.
   images: {
     unoptimized: true,

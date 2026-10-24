@@ -48,16 +48,16 @@ Human-friendly intro is in `README.md`. Deep AI context is in `CLAUDE.md`.
 ## Required commands before pushing
 ```bash
 nvm use            # Node 22, per .nvmrc
-npm ci
-npm run lint -- --max-warnings=0
-npm test
-npm run build      # mirrors CI's "build" job
+pnpm install --frozen-lockfile
+pnpm run lint -- --max-warnings=0
+pnpm test
+pnpm run build      # mirrors CI's "build" job
 ```
 
 ## Adding a dependency
-1. `npm install <pkg>` (commits to `package-lock.json`).
+1. `pnpm add <pkg>` (commits to `pnpm-lock.yaml`).
 2. If it ships native binaries, confirm the Linux/x64 optional package is in
-   `package-lock.json` and installed by Linux `npm ci --include=optional`.
+   `pnpm-lock.yaml` and installed by Linux `pnpm install --frozen-lockfile`.
 
 ## App Router specifics
 - Client components that use `useSearchParams`/`usePathname` must be wrapped

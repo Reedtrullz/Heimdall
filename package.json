@@ -25,11 +25,11 @@
     "dev": "next dev",
     "build": "next build",
     "prepare:standalone": "rm -rf .next/standalone/public .next/standalone/.next/static && mkdir -p .next/standalone/.next && cp -R public .next/standalone/public && cp -R .next/static .next/standalone/.next/static",
-    "start": "npm run start:standalone",
-    "start:standalone": "npm run prepare:standalone && node .next/standalone/server.js",
+    "start": "pnpm run start:standalone",
+    "start:standalone": "pnpm run prepare:standalone && node .next/standalone/server.js",
     "check:native-prebuild-pins": "node scripts/check-native-prebuild-pins.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
-    "audit:high": "npm audit --audit-level=high",
+    "audit:prod": "pnpm audit --prod --audit-level=moderate",
+    "audit:high": "pnpm audit --audit-level=high",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -42,11 +42,11 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "dev:vinext": "vite dev --port 3001",
-    "build:vinext": "vite build && node scripts/fix-vinext-worker-root-externals.mjs",
+    "build:vinext": "VINEXT_BUILD=1 vite build && node scripts/fix-vinext-worker-root-externals.mjs",
     "start:vinext": "vite preview",
-    "deploy:vinext": "npm run build:vinext && vinext-cloudflare deploy --skip-build",
+    "deploy:vinext": "pnpm run build:vinext && vinext-cloudflare deploy --skip-build",
     "fix:vinext-worker-root-externals": "node scripts/fix-vinext-worker-root-externals.mjs",
-    "pack:vinext": "npm run build:vinext"
+    "pack:vinext": "pnpm run build:vinext"
   },
   "dependencies": {
     "@cosmjs/encoding": "0.39.0",
@@ -99,5 +99,6 @@
     "vite": "8.3.5",
     "vitest": "4.1.12"
   },
-  "type": "module"
+  "type": "module",
+  "packageManager": "pnpm@10.34.5"
 }

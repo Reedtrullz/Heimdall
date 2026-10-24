@@ -1,9 +1,14 @@
-name: 'Install npm deps'
-description: Install locked dependencies, including platform optional binaries.
+name: Install pnpm dependencies
+description: Enable pnpm via Corepack (version pinned by package.json packageManager) and install the frozen lockfile, including lockfile-selected optional platform packages.
 
 runs:
   using: composite
   steps:
-    - name: npm ci
+    - name: Enable pnpm via Corepack
       shell: bash
-      run: npm ci --include=optional
+      run: corepack enable
+
+    - name: pnpm install --frozen-lockfile
+      shell: bash
+      # pnpm installs the lockfile's optional packages for the runner platform by default.
+      run: pnpm install --frozen-lockfile
