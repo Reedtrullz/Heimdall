@@ -68,6 +68,11 @@ function rewriteFile(filePath) {
   return false;
 }
 
+function hasQuotedSameDirImport(code, name) {
+  // Exact quoted "./name" only — avoids matching a substring of "../../name".
+  return code.includes(`"./${name}"`) || code.includes(`'./${name}'`);
+}
+
 function assertNoBrokenImports() {
   const files = listJsFiles(BUNDLE_ROOT);
   const broken = [];
@@ -77,9 +82,7 @@ function assertNoBrokenImports() {
     if (!rel.includes("/")) continue;
     const code = fs.readFileSync(file, "utf8");
     for (const name of ROOT_EXTERNAL_NAMES) {
-      // Match only the quoted same-dir form, not a substring of ../../__vinext_*.
-      const sameDir = new RegExp(String.raw`(["'])\./${name.replace(/\./g, "\\.")}\1`);
-      if (!sameDir.test(code)) continue;
+      if (!hasQuotedSameDirImport(code, name)) continue;
       const resolved = path.resolve(path.dirname(file), `./${name}`);
       if (!fs.existsSync(resolved) && fs.existsSync(path.join(BUNDLE_ROOT, name))) {
         broken.push(`${rel} -> ./${name}`);
