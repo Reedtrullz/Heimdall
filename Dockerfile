@@ -50,8 +50,8 @@ COPY --from=builder /app/public ./public
 RUN npm install --no-save --no-package-lock --legacy-peer-deps \
   lightningcss-linux-x64-gnu@1.32.0 \
   @tailwindcss/oxide-linux-x64-gnu@4.3.1 \
-  @img/sharp-linux-x64@0.35.5 \
-  @img/sharp-libvips-linux-x64@1.3.4
+  @img/sharp-linux-x64@0.35.4 \
+  @img/sharp-libvips-linux-x64@1.3.3
 
 USER node
 EXPOSE 3000
