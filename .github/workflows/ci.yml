@@ -249,9 +249,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - uses: ./.github/actions/install-deps
-      # deploy:vinext = build:vinext (vite + root-externals rewrite) then
-      # vinext-cloudflare deploy --skip-build. Do not call vinext-cloudflare
-      # deploy alone: it rebuilds and would drop the rewrite (#50 regression).
       - name: Deploy exact source version
         run: npm run deploy:vinext
         env:
