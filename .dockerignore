@@ -14,3 +14,4 @@ docs
 .DS_Store
 *.log
 npm-debug.log*
+/midgard-openapi.json
