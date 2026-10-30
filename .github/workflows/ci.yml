@@ -107,15 +107,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      # Non-cone sparse checkout keeps every tracked path except the private vault, which is never materialized.
       - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/group_vars/vps/vault.yml
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
       - uses: ./.github/actions/install-deps
+      # One existing browser install, placed outside the masked runner home so the fee-demand namespace guard can read it.
       - run: pnpm exec playwright install --with-deps
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/fee-demand-browsers
       - run: pnpm run e2e
         env:
           CI: true
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/fee-demand-browsers
+      - name: Fee-demand fixture guards
+        run: |
+          set -euo pipefail
+          pnpm exec playwright test --list > "$RUNNER_TEMP/primary-tests.txt"
+          if grep -q 'fee-revenue-demand.measure' "$RUNNER_TEMP/primary-tests.txt"; then
+            echo 'ordinary Playwright suite must not discover the fee-demand measurement' >&2
+            exit 1
+          fi
+          pnpm exec playwright test --list -c playwright.fee-demand.config.ts > "$RUNNER_TEMP/fee-demand-tests.txt"
+          grep -q 'fee-revenue-demand.measure' "$RUNNER_TEMP/fee-demand-tests.txt"
+          node --test e2e/helpers/fee-revenue-egress.test.cjs
+          # Standalone needs its static assets and public files at the Dockerfile paths.
+          mkdir -p .next/standalone/.next
+          cp -R .next/static .next/standalone/.next/static
+          if [ -d public ]; then cp -R public .next/standalone/public; fi
+          chmod -R a-w .next/standalone
+          FEE_NATIVE_BROWSERS_SHA256="$(node -p "require('./e2e/helpers/fee-revenue-egress.cjs').artifactDigest(process.env.PLAYWRIGHT_BROWSERS_PATH)")"
+          export FEE_NATIVE_BROWSERS_SHA256 FEE_NATIVE_PROFILE=namespace-v1
+          node e2e/helpers/fee-revenue-egress.cjs --baseline "$PWD/.next/standalone" "$GITHUB_SHA"
+        env:
+          CI: true
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/fee-demand-browsers
       - uses: actions/upload-artifact@v7
         if: always()
         with:
