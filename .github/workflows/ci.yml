@@ -158,7 +158,9 @@ jobs:
         if: always()
         with:
           name: playwright-results-${{ github.sha }}
-          path: test-results/playwright/
+          path: |
+            test-results/playwright/
+            test-results/fee-demand/
           if-no-files-found: ignore
 
   docker-build:

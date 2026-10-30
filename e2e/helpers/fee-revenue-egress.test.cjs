@@ -660,9 +660,9 @@ function register() {
       assert.equal(run.receipt.scratchRemoved, false);
       assert(run.receipt.elapsedMs < 6000, 'finite shutdown: ' + run.receipt.elapsedMs);
     } finally {
-      for (const pid of run.receipt.signalled) try { process.kill(pid, 'SIGKILL'); } catch (error) { /* already gone */ }
+      for (const pid of run.receipt.signalled) try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ }
       const scratch = run.receipt.scratch;
-      assert(path.basename(scratch).startsWith('fee-native-') && path.dirname(fs.realpathSync(scratch)) === fs.realpathSync(require('node:os').tmpdir()));
+      assert(path.basename(scratch).startsWith('fee-native-') && path.dirname(fs.realpathSync(scratch)) === fs.realpathSync(process.env.RUNNER_TOOL_CACHE || require('node:os').tmpdir()));
       fs.rmSync(scratch, { recursive: true, force: true });
     }
   });

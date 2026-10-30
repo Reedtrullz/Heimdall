@@ -39,6 +39,12 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  // Deliberate Node 22 CommonJS preload and its test: the TypeScript require ban targets ES modules.
+  {
+    files: ["e2e/helpers/fee-revenue-egress.cjs", "e2e/helpers/fee-revenue-egress.test.cjs"],
+    languageOptions: { sourceType: "commonjs" },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

@@ -555,7 +555,7 @@ function pinned(file, label, allowedRoot) {
 }
 function trustedExec(name) {
   for (const dir of TRUSTED_DIRS) {
-    try { const real = fs.realpathSync(path.join(dir, name)); if (TRUSTED_DIRS.some(item => inside(real, item))) return { path: real, sha256: sha256File(real) }; } catch (error) { /* try the next trusted directory */ }
+    try { const real = fs.realpathSync(path.join(dir, name)); if (TRUSTED_DIRS.some(item => inside(real, item))) return { path: real, sha256: sha256File(real) }; } catch { /* try the next trusted directory */ }
   }
   throw new Error('trusted executable missing: ' + name);
 }
@@ -712,11 +712,11 @@ function leftovers(scratch, unterminated, patterns = []) {
   const cp = require('node:child_process'), problems = unterminated ? ['owned namespace not proven terminal'] : [];
   for (const pattern of [scratch, ...patterns]) {
     let status;
-    try { status = cp.spawnSync(trustedExec('pgrep').path, ['-f', '--', pattern.replace(/[.*+?^$|()[\]{}\\]/g, '\\$&')], { timeout: 2000, stdio: 'ignore' }).status; } catch (error) { status = 'error'; }
+    try { status = cp.spawnSync(trustedExec('pgrep').path, ['-f', '--', pattern.replace(/[.*+?^$|()[\]{}\\]/g, '\\$&')], { timeout: 2000, stdio: 'ignore' }).status; } catch { status = 'error'; }
     if (status === 0) problems.push('process mentioning ' + path.basename(pattern) + ' survived'); else if (status !== 1) problems.push('process observation failed for ' + path.basename(pattern));
   }
   if (process.platform === 'linux') {
-    try { if (fs.readFileSync('/proc/mounts', 'utf8').includes(scratch)) problems.push('scratch mount survived'); } catch (error) { problems.push('mount observation unavailable'); }
+    try { if (fs.readFileSync('/proc/mounts', 'utf8').includes(scratch)) problems.push('scratch mount survived'); } catch { problems.push('mount observation unavailable'); }
   }
   return problems;
 }
@@ -830,7 +830,7 @@ function judgeGuard(name, res) {
   if (res.code !== 0 || res.timedOut || res.capped) return 'control failed to run: ' + String(res.text).slice(0, 800);
   if (name === 'SURVIVOR') return null;
   let j;
-  try { j = JSON.parse(res.text.trim().split('\n').pop()); } catch (error) { return 'unparseable control output: ' + String(res.text).slice(0, 300); }
+  try { j = JSON.parse(res.text.trim().split('\n').pop()); } catch { return 'unparseable control output: ' + String(res.text).slice(0, 300); }
   if (!j || typeof j !== 'object' || Array.isArray(j)) return 'control output is not an object';
   const keys = value => JSON.stringify(Object.keys(value).sort());
   const wr = value => Number.isInteger(value) && WRITE_DENIALS.includes(value), rd = value => typeof value === 'string' && READ_DENIALS.includes(value);
