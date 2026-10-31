@@ -554,10 +554,18 @@ function pinned(file, label, allowedRoot) {
   return { path: file, sha256: sha256File(file) };
 }
 function trustedExec(name) {
+  const failures = [];
   for (const dir of TRUSTED_DIRS) {
-    try { const real = fs.realpathSync(path.join(dir, name)); if (TRUSTED_DIRS.some(item => inside(real, item))) return { path: real, sha256: sha256File(real) }; } catch { /* try the next trusted directory */ }
+    const candidate = path.join(dir, name);
+    try {
+      const real = fs.realpathSync(candidate);
+      if (TRUSTED_DIRS.some(item => inside(real, item))) return { path: real, sha256: sha256File(real) };
+      failures.push(`${candidate}: outside trusted directories (${real.startsWith('/usr/') ? real.slice(0, 160) : 'redacted non-system target'})`);
+    } catch (error) {
+      failures.push(`${candidate}: ${String(error.code || error.name || 'LOOKUP_ERROR').slice(0, 32)}`);
+    }
   }
-  throw new Error('trusted executable missing: ' + name);
+  throw new Error(`trusted executable missing: ${name}; ${failures.join('; ')}`);
 }
 function verifyExec(config) {
   for (const name of PRIVILEGED) {
