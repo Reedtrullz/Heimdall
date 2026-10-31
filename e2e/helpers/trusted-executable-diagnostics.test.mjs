@@ -1,12 +1,11 @@
-'use strict';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path/posix';
+import vm from 'node:vm';
+import { test } from 'node:test';
 
 if (process.argv.includes('--test') || process.env.NODE_TEST_CONTEXT) {
-  const assert = require('node:assert/strict');
-  const fs = require('node:fs');
-  const path = require('node:path').posix;
-  const vm = require('node:vm');
-  const { test } = require('node:test');
-  const source = fs.readFileSync(require('node:path').join(__dirname, 'fee-revenue-egress.cjs'), 'utf8');
+  const source = fs.readFileSync(new URL('./fee-revenue-egress.cjs', import.meta.url), 'utf8');
   // Exercise the actual private lookup with authored filesystem outcomes only.
   const roots = source.match(/^const TRUSTED_DIRS = .+;$/m)[0];
   const inside = source.slice(source.indexOf('function inside('), source.indexOf('function pinned('));

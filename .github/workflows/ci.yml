@@ -104,7 +104,7 @@ jobs:
 
   e2e:
     name: Playwright E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       # Non-cone sparse checkout keeps every tracked path except the private vault, which is never materialized.
@@ -136,7 +136,7 @@ jobs:
           fi
           pnpm exec playwright test --list -c playwright.fee-demand.config.ts > "$RUNNER_TEMP/fee-demand-tests.txt"
           grep -q 'fee-revenue-demand.measure' "$RUNNER_TEMP/fee-demand-tests.txt"
-          node --test e2e/helpers/fee-revenue-egress.test.cjs e2e/helpers/trusted-executable-diagnostics.test.cjs
+          node --test e2e/helpers/fee-revenue-egress.test.cjs e2e/helpers/trusted-executable-diagnostics.test.mjs
           # Standalone needs its static assets and public files at the Dockerfile paths.
           mkdir -p .next/standalone/.next
           cp -R .next/static .next/standalone/.next/static
