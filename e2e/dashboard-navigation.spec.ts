@@ -84,7 +84,8 @@ test.describe('Dashboard Navigation', () => {
     const revenueSection = page.locator('section', { has: page.getByText('24H Revenue') });
     await expect(totalBondedSummary).toContainText(/\u16B1[0-9,.]+/);
     await expect(revenueSection).toBeVisible();
-    const loadedBonded = await totalBondedSummary.innerText();
+    const loadedBonded = (await totalBondedSummary.textContent()) ?? '';
+    expect(loadedBonded).not.toBe('');
     const loadedRevenue = await revenueSection.innerText();
     await expect(page.getByText('Failed to load fee revenue')).toHaveCount(0);
 
