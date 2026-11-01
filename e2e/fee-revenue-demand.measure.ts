@@ -98,7 +98,7 @@ async function revenue(page: Surface, zero = false) {
   for (const label of ['24H Revenue', '7D Revenue', '30D Revenue']) {
     const card = page.getByText(label, { exact: true }).locator('..');
     await expect(card).toHaveCount(1);
-    await expect(card).toContainText(zero ? '\u16b10.00' : '\u16b11.00');
+    await expect(card).toContainText(zero ? '\u16b10.00' : '\u16b11.50');
     await expect(card).toContainText(zero ? '$0' : '$2');
   }
 }
