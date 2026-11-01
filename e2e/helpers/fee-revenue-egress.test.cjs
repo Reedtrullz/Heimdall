@@ -838,3 +838,28 @@ function register() {
     } finally { names.forEach((n, i) => { fs[n] = saved[i]; }); fs.rmSync(root, { recursive: true, force: true }); }
   });
 }
+if (RUNS_UNDER_NODE_TEST) {
+  // The early-failure helper and its test must be bound into the frozen instrumentation identity.
+  const assert = require('node:assert/strict'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
+  const { test } = require('node:test'), egress = require('./fee-revenue-egress.cjs');
+  const NEW = ['e2e/helpers/early-failure.ts', 'e2e/helpers/early-failure.test.mjs'];
+  for (const changed of NEW) test('frozen instrumentation identity rejects a changed ' + path.basename(changed), () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fee-bound-'));
+    try {
+      const files = [...new Set([...egress.INSTRUMENTATION, ...NEW])];
+      for (const file of files) { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.copyFileSync(path.join(process.cwd(), file), path.join(root, file)); }
+      const artifact = path.join(root, 'artifact');
+      fs.mkdirSync(path.join(artifact, '.next'), { recursive: true });
+      fs.writeFileSync(path.join(artifact, 'server.js'), 'control'); fs.writeFileSync(path.join(artifact, '.next/BUILD_ID'), 'control');
+      for (const f of [path.join(artifact, 'server.js'), path.join(artifact, '.next/BUILD_ID')]) fs.chmodSync(f, 0o444);
+      fs.chmodSync(path.join(artifact, '.next'), 0o555); fs.chmodSync(artifact, 0o555);
+      try {
+        const input = { label: 'baseline', phase: 'baseline', artifact, revision: 'a'.repeat(40), artifactSha256: egress.artifactDigest(artifact), runtime: process.version, clock: egress.CLOCK_EPOCH,
+          instrumentation: egress.digest(egress.INSTRUMENTATION.map(file => path.join(root, file))) };
+        assert.equal(egress.validateInputs([input], root).length, 1);
+        fs.appendFileSync(path.join(root, changed), '\n// tamper\n');
+        assert.throws(() => egress.validateInputs([input], root), /missing or mismatched frozen input identity/);
+      } finally { fs.chmodSync(artifact, 0o755); fs.chmodSync(path.join(artifact, '.next'), 0o755); }
+    } finally { fs.rmSync(root, { recursive: true, force: true }); }
+  });
+}

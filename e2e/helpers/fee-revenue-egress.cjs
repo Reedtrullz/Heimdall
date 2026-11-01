@@ -230,7 +230,7 @@ const CLOCK_EPOCH = 1792972800000;
 const INSTRUMENTATION = [
   'e2e/fee-revenue-demand.measure.ts', 'e2e/helpers/fee-revenue-fixture.ts',
   'e2e/helpers/fee-revenue-egress.cjs', 'e2e/helpers/fee-revenue-egress.test.cjs',
-  'playwright.fee-demand.config.ts',
+  'playwright.fee-demand.config.ts', 'e2e/helpers/early-failure.ts', 'e2e/helpers/early-failure.test.mjs',
 ];
 function digest(files) {
   const hash = crypto.createHash('sha256');

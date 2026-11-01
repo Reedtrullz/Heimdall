@@ -1,5 +1,6 @@
 import { expect, test, type Page } from './fixtures';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { reportFirstFailure } from './helpers/early-failure';
 import { FEE_ADDRESS_A, FEE_ADDRESS_B, FEE_ADDRESS_INVALID, FEE_EARNINGS_PROXY_PATH, type FeeFixtureMode, type FeeFixtureSnapshot } from './helpers/fee-revenue-fixture';
 
 const FIXTURE = process.env.FEE_DEMAND_FIXTURE_ORIGIN ?? '';
@@ -133,6 +134,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 test.afterEach(async ({ page }, info) => {
+  reportFirstFailure(info);
   passed &&= info.status === info.expectedStatus;
   await control('/-/release', {});
   const state = await snapshot();
