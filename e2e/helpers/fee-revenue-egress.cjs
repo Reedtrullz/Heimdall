@@ -393,6 +393,13 @@ function compareRuns(runs, paired) {
   }
 }
 function treeBytes(root, excluded) {
+  // Owned scratch can lose entries between listing and stat (e.g. transient browser dirs):
+  // re-list a bounded number of times; other errors and sustained ENOENT still throw.
+  for (let attempt = 0; ; attempt++) {
+    try { return treeBytesOnce(root, excluded); } catch (error) { if (error.code !== 'ENOENT' || attempt >= 3) throw error; }
+  }
+}
+function treeBytesOnce(root, excluded) {
   const stat = fs.lstatSync(root, { throwIfNoEntry: false });
   if (!stat) return 0;
   if (stat.isSymbolicLink()) throw new Error('owned scratch/output symlink');
@@ -401,7 +408,9 @@ function treeBytes(root, excluded) {
     const file=path.join(root,entry.name);
     if(file===excluded)return sum;
     if(entry.isSymbolicLink())throw new Error('owned scratch/output symlink');
-    return sum+(entry.isDirectory()?treeBytes(file,excluded):fs.statSync(file).size);
+    const child=fs.lstatSync(file);
+    if(child.isSymbolicLink())throw new Error('owned scratch/output symlink');
+    return sum+(child.isDirectory()?treeBytesOnce(file,excluded):child.size);
   },0);
 }
 function processTable() {

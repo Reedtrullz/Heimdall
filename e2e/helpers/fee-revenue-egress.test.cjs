@@ -763,4 +763,78 @@ function register() {
     assert.match(String(failure.cause?.code ?? failure.message), /ECONNREFUSED|ECONNRESET|EPIPE/);
     assert.equal(fixture.snapshot().total, before.total);
   });
+
+  // treeBytes races: real owned temp files, with a hook on fs that mutates the tree
+  // around a real directory listing (shortcut: samples, not an atomic snapshot).
+  const treeRace = (name, mutate, check) => test('treeBytes race: ' + name, () => {
+    const fs = require('node:fs');
+    const root = fs.mkdtempSync(path.join(process.env.TMPDIR || require('node:os').tmpdir(), 'fee-tree-'));
+    const realReaddir = fs.readdirSync, realRead = fs.readFileSync;
+    let reads = 0;
+    try {
+      fs.mkdirSync(path.join(root, 'keep'));
+      fs.writeFileSync(path.join(root, 'keep', 'a'), '12345');
+      fs.writeFileSync(path.join(root, 'gone'), '1234567');
+      fs.mkdirSync(path.join(root, 'dir'));
+      fs.writeFileSync(path.join(root, 'dir', 'b'), '123');
+      let fired = false;
+      fs.readFileSync = (...args) => { reads++; return realRead(...args); };
+      fs.readdirSync = (dir, ...rest) => {
+        if (dir === root && !fired) { fired = true; mutate(fs, root, true); }
+        const out = realReaddir(dir, ...rest);
+        if (dir === root && fired === true) { fired = 'after'; mutate(fs, root, false); }
+        return out;
+      };
+      check(() => egress.treeBytes(root), () => reads);
+    } finally {
+      fs.readdirSync = realReaddir; fs.readFileSync = realRead;
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+  treeRace('file disappears after listing', (fs, root, before) => { if (!before) fs.rmSync(path.join(root, 'gone')); },
+    (run) => assert.equal(run(), 8));
+  treeRace('directory disappears after listing', (fs, root, before) => { if (!before) fs.rmSync(path.join(root, 'dir'), { recursive: true }); },
+    (run) => assert.equal(run(), 12));
+  treeRace('root disappears between lookup and listing', (fs, root, before) => { if (before) fs.rmSync(root, { recursive: true }); },
+    (run) => assert.equal(run(), 0));
+  treeRace('symlink swapped in after listing fails closed without reading target', (fs, root, before) => {
+    if (before) return;
+    fs.rmSync(path.join(root, 'gone')); fs.symlinkSync(path.join(root, 'keep', 'a'), path.join(root, 'gone'));
+  }, (run, reads) => { assert.throws(run, /symlink/); assert.equal(reads(), 0); });
+  treeRace('real I/O and permission errors still fail closed', () => {}, (run) => {
+    const fs = require('node:fs'), real = fs.lstatSync;
+    for (const code of ['EACCES', 'EIO']) {
+      fs.lstatSync = (file, ...rest) => { if (path.basename(file) === 'gone') throw Object.assign(new Error(code), { code }); return real(file, ...rest); };
+      try { assert.throws(run, { code }); } finally { fs.lstatSync = real; }
+    }
+  });
+  treeRace('sustained ENOENT fails closed after bounded retries', () => {}, (run) => {
+    const fs = require('node:fs'), real = fs.lstatSync; let calls = 0;
+    fs.lstatSync = (file, ...rest) => { if (path.basename(file) === 'gone') { calls++; throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); } return real(file, ...rest); };
+    try { assert.throws(run, { code: 'ENOENT' }); assert(calls <= 5, 'retries bounded: ' + calls); } finally { fs.lstatSync = real; }
+  });
+  // The retry budget is global to one treeBytes call: deep repeated ENOENT must not multiply it.
+  test('treeBytes race: nested sustained ENOENT uses one global budget of 4 passes', () => {
+    const fs = require('node:fs'), real = fs.lstatSync;
+    const root = fs.mkdtempSync(path.join(process.env.TMPDIR || require('node:os').tmpdir(), 'fee-tree-'));
+    let calls = 0;
+    try {
+      fs.mkdirSync(path.join(root, 'd1', 'd2'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'd1', 'd2', 'gone'), '1');
+      fs.lstatSync = (file, ...rest) => { if (path.basename(file) === 'gone') { calls++; throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); } return real(file, ...rest); };
+      assert.throws(() => egress.treeBytes(root), { code: 'ENOENT' });
+      assert.equal(calls, 4);
+    } finally { fs.lstatSync = real; fs.rmSync(root, { recursive: true, force: true }); }
+  });
+  test('treeBytes race: excluded path is never statted, listed or read', () => {
+    const fs = require('node:fs'), root = fs.mkdtempSync(path.join(process.env.TMPDIR || require('node:os').tmpdir(), 'fee-tree-'));
+    const names = ['lstatSync', 'statSync', 'readdirSync', 'readFileSync'], saved = names.map((n) => fs[n]);
+    const skip = path.join(root, 'skip'); let touched = 0;
+    try {
+      fs.mkdirSync(skip); fs.writeFileSync(path.join(skip, 'x'), 'secret'); fs.writeFileSync(path.join(root, 'a'), '123');
+      names.forEach((n, i) => { fs[n] = (file, ...rest) => { if (String(file).startsWith(skip)) touched++; return saved[i](file, ...rest); }; });
+      assert.equal(egress.treeBytes(root, skip), 3);
+      assert.equal(touched, 0);
+    } finally { names.forEach((n, i) => { fs[n] = saved[i]; }); fs.rmSync(root, { recursive: true, force: true }); }
+  });
 }
