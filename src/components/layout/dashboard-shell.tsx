@@ -196,7 +196,8 @@ export function DashboardShell({
   }, []);
 
   const handleRefresh = useCallback(() => {
-    void mutate(shouldRefreshDashboardSWRKey, undefined, { revalidate: true });
+    // Revalidate only: passing a data argument (even undefined) would overwrite loaded cache.
+    void mutate(shouldRefreshDashboardSWRKey);
     setNow(Date.now());
   }, []);
 
