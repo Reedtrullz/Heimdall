@@ -75,4 +75,68 @@ test.describe('Dashboard Navigation', () => {
     await expect(walletConnect).toBeEnabled();
     await expect(walletConnect).toHaveAccessibleName('Connect Wallet');
   });
+
+  test('Refresh keeps loaded cache visible while nodes are pending and fee revenue fails', async ({ page, allowApiErrors }) => {
+    allowApiErrors(['/api/midgard/v2/history/earnings']);
+
+    await page.getByRole('button', { name: 'Fee Revenue' }).click();
+    const totalBondedSummary = page.getByRole('group', { name: 'Total Bonded summary' });
+    const revenueSection = page.locator('section', { has: page.getByText('24H Revenue') });
+    await expect(totalBondedSummary).toContainText(/\u16B1[0-9,.]+/);
+    await expect(revenueSection).toBeVisible();
+    const loadedBonded = (await totalBondedSummary.textContent()) ?? '';
+    expect(loadedBonded).not.toBe('');
+    const loadedRevenue = await revenueSection.innerText();
+    await expect(page.getByText('Failed to load fee revenue')).toHaveCount(0);
+
+    let releaseNodes: () => void = () => {};
+    const nodesGate = new Promise<void>((resolve) => { releaseNodes = resolve; });
+    let nodesRequestsHeld = 0;
+    let earningsFailing = true;
+    try {
+      await page.route('**/api/thorchain/thorchain/nodes', async (route) => {
+        nodesRequestsHeld += 1;
+        await nodesGate;
+        await route.fallback();
+      });
+      await page.route('**/api/midgard/v2/history/earnings**', async (route) => {
+        if (earningsFailing) {
+          await route.fulfill({ status: 429, json: { error: 'Mock earnings rate limit' } });
+          return;
+        }
+        const interval = {
+          startTime: '1699990000000000000',
+          endTime: '1700010000000000000',
+          liquidityFees: '900000000',
+          blockRewards: '100000000',
+          earnings: '1000000000',
+          bondingEarnings: '300000000',
+          liquidityEarnings: '700000000',
+          avgNodeCount: '2',
+          runePriceUSD: '1.50',
+          pools: [],
+        };
+        await route.fulfill({ json: { meta: { ...interval }, intervals: [interval] } });
+      });
+
+      await page.getByRole('button', { name: 'Refresh dashboard data' }).click();
+      await expect.poll(() => nodesRequestsHeld, { timeout: 15_000 }).toBeGreaterThan(0);
+
+      // Nodes are still pending: the loaded summary must remain, and both fee panels show the failure.
+      await expect(totalBondedSummary).toBeVisible();
+      await expect(totalBondedSummary).toHaveText(loadedBonded);
+      await expect(page.getByText('Failed to load fee revenue')).toHaveCount(2, { timeout: 20_000 });
+      await expect(totalBondedSummary).toHaveText(loadedBonded);
+
+      earningsFailing = false;
+      releaseNodes();
+      await page.getByRole('button', { name: 'Refresh dashboard data' }).click();
+      await expect(page.getByText('Failed to load fee revenue')).toHaveCount(0, { timeout: 20_000 });
+      await expect(revenueSection).toBeVisible();
+      await expect.poll(() => revenueSection.innerText()).not.toBe(loadedRevenue);
+      await expect(totalBondedSummary).toHaveText(loadedBonded);
+    } finally {
+      releaseNodes();
+    }
+  });
 });
