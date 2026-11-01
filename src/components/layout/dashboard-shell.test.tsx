@@ -294,7 +294,9 @@ describe('DashboardShell', () => {
     await screen.findByText('Dashboard content');
     fireEvent.click(screen.getByRole('button', { name: 'Refresh dashboard data' }));
 
-    expect(mutate).toHaveBeenCalledWith(expect.any(Function), undefined, { revalidate: true });
+    // Exactly one argument: SWR treats any explicit data (even undefined) as a cache write.
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(mutate).mock.calls[0]).toHaveLength(1);
 
     const refreshPredicate = vi.mocked(mutate).mock.calls[0][0] as (key: unknown) => boolean;
     expect(refreshPredicate('nodes')).toBe(true);
